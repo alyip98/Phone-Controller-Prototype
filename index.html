@@ -28,6 +28,7 @@
 	var W, H;
 	var socket;
 	var points = [];
+	var buttons = [];
 	
 	function init() {
 		c = document.getElementById("display");
@@ -36,7 +37,17 @@
 		H = window.innerHeight;
 		c.width = W;
 		c.height = H;
-		Joystick.y = H/2;
+		Joystick.y = H * 0.7;
+		
+		var x = W - 100;
+		var y = H * 0.7;
+		var separation = 50;
+		var upButton = new Button("up", x, y - separation, 25, "green");
+		var downButton = new Button("down", x, y + separation, 25, "blue");
+		var leftButton = new Button("left", x - separation, y, 25, "purple");
+		var rightButton = new Button("right", x + separation, y, 25, "red");
+		
+		buttons = [upButton, downButton, leftButton, rightButton];
 		
 		socket = io();
 		
@@ -75,16 +86,26 @@
 			ctx.fillRect(Joystick.stickX, Joystick.stickY, 10, 10);
 		}
 		
+		// Buttons
+		for (var i = 0; i < buttons.length; i++) {
+			ctx.fillStyle = buttons[i].color;
+			ctx.beginPath();
+			ctx.arc(buttons[i].x, buttons[i].y, buttons[i].r, 0, Math.PI * 2, true);
+			ctx.closePath();
+			ctx.fill();
+		}
+		
 		
 		window.requestAnimationFrame(render);
 	}
 	
 	function touchStartHandler(e) {
 		e.preventDefault();
-		for (var i in e.touches) {
+		for (var i = 0; i < e.touches.length; i++) {
 			var touch = e.touches[i];
 			if (Joystick.touchId == -1 && Joystick.isInsideArea(touch.clientX, touch.clientY)) {
 				Joystick.touchId = touch.identifier;
+				window.navigator.vibrate(50);
 			}
 		}
 		// updatePoints(e);
@@ -93,22 +114,34 @@
 	function touchMoveHandler(e) {
 		e.preventDefault();
 		updatePoints(e);
-		socket.emit("joystick", JSON.stringify(Joystick.getInput()));
+		if (Joystick.touchId != -1) {
+			socket.emit("joystick", JSON.stringify(Joystick.getInput()));
+		}
 	}
 	
 	function touchEndHandler(e) {
 		e.preventDefault();
-		for (var i in e.touches) {
-			var touch = e.touches[i];
+		for (var i = 0; i < e.changedTouches.length; i++) {
+			var touch = e.changedTouches[i];
 			if (Joystick.touchId == touch.identifier) {
 				Joystick.touchId = -1;
+				socket.emit("joystick", JSON.stringify(Joystick.getZeroed()));
 			}
 		}
 	}
 	
+	function orientationChangeHandler(e) {
+		W = window.innerWidth;
+		H = window.innerHeight;
+		c.width = W;
+		c.height = H;
+		Joystick.y = H * 0.7;
+		render();
+	}
+	
 	function updatePoints(e) {
 		points = [];
-		for (var i in e.touches) {
+		for (var i = 0; i < e.touches.length; i++) {
 			var touch = e.touches[i];
 			points.push([e.touches[i].clientX, e.touches[i].clientY]);
 			if (Joystick.touchId == touch.identifier) {
@@ -128,7 +161,7 @@
 		magnitude: 0,
 		
 		isInsideArea: function(px, py) {
-			return Math.pow(px - this.x, 2) + Math.pow(py - this.y, 2) <= this.r * this.r;
+			return Math.pow(px - this.x, 2) + Math.pow(py - this.y, 2) <= Math.pow(this.r, 2);
 		},
 		
 		updateStickPos: function(px, py) {
@@ -143,12 +176,29 @@
 				angle: this.angle,
 				magnitude: this.magnitude
 			};
+		},
+		
+		getZeroed: function() {
+			return {
+				angle: 0,
+				magnitude: 0
+			}
+		}
+	}
+	
+	var Button = function(name, x, y, r, color) {
+		this.name = name;
+		this.x = x;
+		this.y = y;
+		this.r = r;
+		this.color = color || "white";
+		this.isInsideArea = function(px, py) {
+			return Math.pow(px - this.x, 2) + Math.pow(py - this.y, 2) <= Math.pow(this.r, 2);
 		}
 	}
 	
 	window.onload = init;
-	
-	window.ontouchstart
+	window.addEventListener("orientationchange", orientationChangeHandler, false);
     </script>
 	<canvas id="display"></canvas>
   </body>
