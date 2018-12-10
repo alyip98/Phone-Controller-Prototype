@@ -107,6 +107,13 @@
 				Joystick.touchId = touch.identifier;
 				window.navigator.vibrate(50);
 			}
+			
+			for (var j = 0; j < buttons.length; j++) {
+				if (buttons[j].isInsideArea(touch.clientX, touch.clientY)) {
+					window.navigator.vibrate(200);
+					socket.emit("button", buttons[j].name);
+				}
+			}
 		}
 		// updatePoints(e);
 	}

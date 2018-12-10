@@ -14,6 +14,11 @@ io.on('connection', function(socket){
     // io.emit('chat message', msg);
 	console.log("joystick: " + msg);
   });
+  
+  socket.on('button', function(msg){
+    // io.emit('chat message', msg);
+	console.log("button: " + msg);
+  });
   // console.log("user connected");
 });
 
