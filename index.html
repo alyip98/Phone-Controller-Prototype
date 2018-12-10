@@ -1,28 +1,17 @@
 <!doctype html>
 <html>
+	<meta name="viewport" content="width=device-width,user-scalable=no">
+	<meta name="mobile-web-app-capable" content="yes">
   <head>
-    <title>Socket.IO chat</title>
+    <title>Phone Controller</title>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font: 13px Helvetica, Arial; }
-      form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
-      form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
-      form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
-      #messages { list-style-type: none; margin: 0; padding: 0; }
-      #messages li { padding: 5px 10px; }
-      #messages li:nth-child(odd) { background: #eee; }
-      #messages { margin-bottom: 40px }
     </style>
   </head>
   <body>
-    <ul id="messages"></ul>
-    <form action="">
-      <input id="m" autocomplete="off" /><button>Send</button>
-    </form>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
     <script>
-      $(function () {
+      /*$(function () {
         var socket = io();
         $('form').submit(function(){
           socket.emit('chat message', "sent: [" + Date.now() + "] " + $('#m').val());
@@ -33,7 +22,134 @@
           $('#messages').append($('<li>').text("received: [" + Date.now() + "] " + msg));
           window.scrollTo(0, document.body.scrollHeight);
         });
-      });
+      });*/
+	
+	var c, ctx;
+	var W, H;
+	var socket;
+	var points = [];
+	
+	function init() {
+		c = document.getElementById("display");
+		ctx = c.getContext("2d");
+		W = window.innerWidth;
+		H = window.innerHeight;
+		c.width = W;
+		c.height = H;
+		Joystick.y = H/2;
+		
+		socket = io();
+		
+		c.ontouchstart = touchStartHandler;
+		c.ontouchmove = touchMoveHandler;
+		c.ontouchend = touchEndHandler;
+		window.scrollTo(0, 1);
+		
+		render();
+	}
+	
+	function render() {
+		ctx.fillStyle = "black";
+		ctx.fillRect(0, 0, W, H);
+		ctx.fillStyle = "yellow";
+		for (var i in points) {
+			var p = points[i];
+			ctx.fillRect(p[0], p[1], 5, 5);
+		}
+		
+		ctx.fillText("asd", 50, H/2);
+		
+		// Joystick
+		ctx.strokeStyle = "white";
+		ctx.beginPath();
+		ctx.arc(Joystick.x, Joystick.y, Joystick.r, 0, Math.PI * 2, true);
+		ctx.closePath();
+		ctx.stroke();
+		
+		ctx.beginPath();
+		ctx.arc(Joystick.x, Joystick.y, Joystick.r / 2, 0, Math.PI * 2, true);
+		ctx.closePath();
+		ctx.stroke();
+		
+		if (Joystick.touchId != -1) {
+			ctx.fillRect(Joystick.stickX, Joystick.stickY, 10, 10);
+		}
+		
+		
+		window.requestAnimationFrame(render);
+	}
+	
+	function touchStartHandler(e) {
+		e.preventDefault();
+		for (var i in e.touches) {
+			var touch = e.touches[i];
+			if (Joystick.touchId == -1 && Joystick.isInsideArea(touch.clientX, touch.clientY)) {
+				Joystick.touchId = touch.identifier;
+			}
+		}
+		// updatePoints(e);
+	}
+	
+	function touchMoveHandler(e) {
+		e.preventDefault();
+		updatePoints(e);
+		socket.emit("joystick", JSON.stringify(Joystick.getInput()));
+	}
+	
+	function touchEndHandler(e) {
+		e.preventDefault();
+		for (var i in e.touches) {
+			var touch = e.touches[i];
+			if (Joystick.touchId == touch.identifier) {
+				Joystick.touchId = -1;
+			}
+		}
+	}
+	
+	function updatePoints(e) {
+		points = [];
+		for (var i in e.touches) {
+			var touch = e.touches[i];
+			points.push([e.touches[i].clientX, e.touches[i].clientY]);
+			if (Joystick.touchId == touch.identifier) {
+				Joystick.updateStickPos(touch.clientX, touch.clientY);
+			}
+		}
+	}
+	
+	var Joystick = {
+		x: 100,
+		y: 100,
+		r: 75,
+		touchId: -1,
+		stickX: 0,
+		stickY: 0,
+		angle: 0,
+		magnitude: 0,
+		
+		isInsideArea: function(px, py) {
+			return Math.pow(px - this.x, 2) + Math.pow(py - this.y, 2) <= this.r * this.r;
+		},
+		
+		updateStickPos: function(px, py) {
+			this.angle = Math.atan2(py - this.y, px - this.x);
+			this.magnitude = Math.min(Math.sqrt(Math.pow(px - this.x, 2) + Math.pow(py - this.y, 2)), this.r) / this.r;
+			this.stickX = this.x + Math.cos(this.angle) * this.magnitude * this.r;
+			this.stickY = this.y + Math.sin(this.angle) * this.magnitude * this.r;
+		},
+		
+		getInput: function() {
+			return {
+				angle: this.angle,
+				magnitude: this.magnitude
+			};
+		}
+	}
+	
+	window.onload = init;
+	
+	window.ontouchstart
     </script>
+	<canvas id="display"></canvas>
   </body>
 </html>
