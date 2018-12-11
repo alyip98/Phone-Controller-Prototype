@@ -1,0 +1,124 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Game View</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+    </style>
+  </head>
+  <body>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+	
+	var c, ctx;
+	var W, H;
+	var socket;
+	var points = [];
+	var buttons = [];
+	var game;
+	
+	function init() {
+		c = document.getElementById("display");
+		ctx = c.getContext("2d");
+		W = window.innerWidth;
+		H = window.innerHeight;
+		c.width = W;
+		c.height = H;
+		
+		socket = io();
+		game = new Game();
+		
+		socket.emit("gameInit", "");
+		
+		socket.on("playerJoin", function(msg) {
+			console.log("player joining: " + msg);
+			game.addPlayer(msg);
+		});
+		
+		socket.on("joystick", function(msg) {
+			// update controller obj
+			var obj = JSON.parse(msg);
+			var playerId = obj.id;
+			var player = game.getPlayerById(playerId);
+			if (player) {
+				player.controller.updateJoystick(msg);
+			}
+		});
+		
+		socket.on("button", function(msg) {
+			// update controller obj
+			var obj = JSON.parse(msg);
+			var playerId = obj.id;
+			var player = game.getPlayerById(playerId);
+			if (player) {
+				player.controller.updateButton(msg);
+			}
+		});
+
+		render();
+	}
+	
+	function render() {
+		ctx.fillStyle = "black";
+		ctx.fillRect(0, 0, W, H);
+		
+		
+		window.requestAnimationFrame(render);
+	}
+	
+	function Game() {
+		this.players = [];
+		this.getPlayerById = function(id) {
+			for (var i = 0; i < this.players.length; i++) {
+				if (this.players[i].id == id) {
+					return this.players[i];
+				}
+			}
+			return null;
+		}
+		
+		this.addPlayer = function(msg) {
+			if (this.getPlayerById(msg) != null) {
+				return;
+			}
+			var player = new Player(msg);
+			this.players.push(player);			
+		}
+	}
+	
+	function Player(id) {
+		this.id = id;
+		this.controller = new Controller();
+	}
+	
+	function Controller() {
+		this.inputs = {
+			x: 0,
+			y: 0,
+			up: 0,
+			down: 0,
+			left: 0,
+			right: 0
+		}
+		
+		this.getInput = function(name) {
+			return this.inputs[name];
+		}
+		
+		this.updateJoystick = function(msg) {
+			var obj = JSON.parse(msg);
+			this.inputs.x = Math.cos(obj.angle) * obj.magnitude;
+			this.inputs.y = Math.sin(obj.angle) * obj.magnitude;
+		}
+		
+		this.updateButton = function(msg) {
+			var obj = JSON.parse(msg);
+			this.inputs[obj.button] = obj.status;
+		}
+	}
+	
+	window.onload = init;
+    </script>
+	<canvas id="display"></canvas>
+  </body>
+</html>

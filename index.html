@@ -29,8 +29,16 @@
 	var socket;
 	var points = [];
 	var buttons = [];
+	var buttonTouches = {};
 	
 	function init() {
+		buildUI();
+		establishConnection();
+		registerHandlers();
+		render();
+	}
+	
+	function buildUI() {
 		c = document.getElementById("display");
 		ctx = c.getContext("2d");
 		W = window.innerWidth;
@@ -48,15 +56,30 @@
 		var rightButton = new Button("right", x + separation, y, 25, "red");
 		
 		buttons = [upButton, downButton, leftButton, rightButton];
-		
+	}
+	
+	function establishConnection() {
 		socket = io();
+	
+		var cookie = document.cookie;
+		// valid session stored
+		if (parseInt(cookie) >= 0) {
+			socket.emit("clientRejoin", cookie);
+		} else {
+			cookie = Math.floor(Math.random() * 1000000000);
+			document.cookie = cookie;
+			socket.emit("clientNew", cookie);
+		}
 		
+		socket.on("joinSuccess", function(msg) {
+			console.log("successfully joined", msg);
+		});
+	}
+	
+	function registerHandlers() {
 		c.ontouchstart = touchStartHandler;
 		c.ontouchmove = touchMoveHandler;
 		c.ontouchend = touchEndHandler;
-		window.scrollTo(0, 1);
-		
-		render();
 	}
 	
 	function render() {
@@ -111,18 +134,27 @@
 			for (var j = 0; j < buttons.length; j++) {
 				if (buttons[j].isInsideArea(touch.clientX, touch.clientY)) {
 					window.navigator.vibrate(200);
-					socket.emit("button", buttons[j].name);
+					socket.emit("button", messageWithId({
+						button: buttons[j].name,
+						status: 1
+					}));
+					buttonTouches[touch.identifier] = buttons[j].name;
 				}
 			}
 		}
 		// updatePoints(e);
 	}
 	
+	function messageWithId(msg) {
+		msg.id = document.cookie;
+		return JSON.stringify(msg);
+	}
+	
 	function touchMoveHandler(e) {
 		e.preventDefault();
 		updatePoints(e);
 		if (Joystick.touchId != -1) {
-			socket.emit("joystick", JSON.stringify(Joystick.getInput()));
+			socket.emit("joystick", messageWithId(Joystick.getInput()));
 		}
 	}
 	
@@ -132,7 +164,15 @@
 			var touch = e.changedTouches[i];
 			if (Joystick.touchId == touch.identifier) {
 				Joystick.touchId = -1;
-				socket.emit("joystick", JSON.stringify(Joystick.getZeroed()));
+				socket.emit("joystick", messageWithId(Joystick.getZeroed()));
+			}
+			
+			if (buttonTouches[touch.identifier]) {
+				socket.emit("button", messageWithId({
+						button: buttonTouches[touch.identifier],
+						status: 0
+					}));
+				delete buttonTouches[touch.identifier];
 			}
 		}
 	}
