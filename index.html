@@ -30,6 +30,7 @@
 	var points = [];
 	var buttons = [];
 	var buttonTouches = {};
+	var debugText = "asd";
 	
 	function init() {
 		buildUI();
@@ -91,7 +92,7 @@
 			ctx.fillRect(p[0], p[1], 5, 5);
 		}
 		
-		ctx.fillText("asd", 50, H/2);
+		// ctx.fillText(debugText, W/2, H/2);
 		
 		// Joystick
 		ctx.strokeStyle = "white";
@@ -128,12 +129,17 @@
 			var touch = e.touches[i];
 			if (Joystick.touchId == -1 && Joystick.isInsideArea(touch.clientX, touch.clientY)) {
 				Joystick.touchId = touch.identifier;
-				window.navigator.vibrate(50);
+				if (window.navigator.vibrate) {
+						window.navigator.vibrate(50);
+					}
 			}
 			
 			for (var j = 0; j < buttons.length; j++) {
 				if (buttons[j].isInsideArea(touch.clientX, touch.clientY)) {
-					window.navigator.vibrate(200);
+					debugText += "ASd";
+					if (window.navigator.vibrate) {
+						window.navigator.vibrate(200);
+					}
 					socket.emit("button", messageWithId({
 						button: buttons[j].name,
 						status: 1

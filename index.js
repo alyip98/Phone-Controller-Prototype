@@ -28,6 +28,10 @@ io.on('connection', function(socket){
 	socket.on('button', function(msg){
 		// io.emit('chat message', msg);
 		console.log("button: " + msg);
+		
+		if (gameSocket) {
+			gameSocket.emit('button', msg);
+		}
 	});
 
 	socket.on('gameInit', function(msg) {
