@@ -16,6 +16,10 @@ app.get('/game', function(req, res){
 	res.sendFile(__dirname + '/game.html');
 });
 
+app.get('/game.js', function(req, res){
+	res.sendFile(__dirname + '/game.js');
+});
+
 io.on('connection', function(socket){
 	socket.on('joystick', function(msg){
 		console.log("joystick: " + msg);
