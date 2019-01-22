@@ -66,6 +66,9 @@ function render() {
 function update() {
 	dt = Date.now() - last;
 	for (var i in game.players) {
+		game.players[i].collisions = [];
+	}
+	for (var i in game.players) {
 		game.players[i].update();
 	}
 	
@@ -112,6 +115,8 @@ function Player(id) {
 	this.friction = 0.1;
 	this.acceleration = 1;
 	this.facingAngle = 0;
+	
+	this.collisions = [];
 	
 	// skills
 	this.skills = {
@@ -172,21 +177,73 @@ function Player(id) {
 			}
 		}
 		
-		
+		// Checking collisions with other players
 		for (var i = 0; i < game.players.length; i++) {
 			var other = game.players[i];
 			if (other === this) {
 				continue;
 			}
 			
+			if (this.collisions.indexOf(other) != -1) {
+				continue;
+			}
+			
 			var dist = this.getDistanceTo(other);
-			if (dist < this.r + other.r) {
-				var force = Settings.CollisionConstant * this.m * other.m / Math.pow(dist, 2);
+			if (dist < this.r + other.r - 1) {
+				this.collide(other);
+				other.collisions.push(this);
+				this.collisions.push(other);
+				/*var force = Settings.CollisionConstant * this.m * other.m / Math.pow(dist, 2);
 				var angle = this.getAngleTo(other);
 				this.applyForce(force, angle);
-				other.applyForce(force, angle + Math.PI);
+				other.applyForce(force, angle + Math.PI);*/
 			}
 		}
+		
+		// Checking oob
+		if (this.x + this.r > W) {
+			this.x = W - this.r;
+		}
+		if (this.x - this.r < 0) {
+			this.x = this.r;
+		}
+		if (this.y + this.r > H) {
+			this.y = H - this.r;
+		}
+		if (this.y - this.r < 0) {
+			this.y = this.r;
+		}
+	}
+	
+	this.collide = function(other) {
+		var v1 = this.v;
+		var v2 = other.v;
+		var m1 = this.m;
+		var m2 = other.m;
+		var theta1 = this.a;
+		var theta2 = other.a;
+		var phi = Math.atan2(other.y - this.y, other.x - this.x);
+		var cr = -(this.getDistanceTo(other) - this.r - other.r);
+		var temp1 = (v1 * Math.cos(theta1 - phi) * (m1 - m2) + 2 * m2 * v2 * Math.cos(theta2 - phi)) / (m1 + m2);
+		var temp2 = (v2 * Math.cos(theta2 - phi) * (m2 - m1) + 2 * m1 * v1 * Math.cos(theta1 - phi)) / (m1 + m2);
+		var vx1 = temp1 * Math.cos(phi) + v1 * Math.sin(theta1 - phi) * Math.sin(phi);
+		var vy1 = temp1 * Math.sin(phi) + v1 * Math.sin(theta1 - phi) * Math.cos(phi);
+		
+		var vx2 = temp2 * Math.cos(phi) + v2 * Math.sin(theta2 - phi) * Math.sin(phi);
+		var vy2 = temp2 * Math.sin(phi) + v2 * Math.sin(theta2 - phi) * Math.cos(phi);
+		this.setSpeed(vx1, vy1);
+		other.setSpeed(vx2, vy2);
+		
+		this.x -= cr * Math.cos(phi);
+		this.y -= cr * Math.sin(phi);
+		
+		other.x += cr * Math.cos(phi);
+		other.y += cr * Math.sin(phi);
+	}
+	
+	this.setSpeed = function(vx, vy) {
+		this.a = Math.atan2(vy, vx);
+		this.v = Math.sqrt(vx * vx + vy * vy);
 	}
 	
 	this.applyForce = function(magnitude, angle) {
