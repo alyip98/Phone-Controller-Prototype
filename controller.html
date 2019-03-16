@@ -31,6 +31,7 @@
 	var buttons = [];
 	var buttonTouches = {};
 	var debugText = "asd";
+	var mouseDown = false;
 	
 	function init() {
 		buildUI();
@@ -81,6 +82,10 @@
 		c.ontouchstart = touchStartHandler;
 		c.ontouchmove = touchMoveHandler;
 		c.ontouchend = touchEndHandler;
+		
+		c.onmousedown = mouseDownHandler;
+		c.onmousemove = mouseMoveHandler;
+		c.onmouseup = mouseUpHandler;
 	}
 	
 	function render() {
@@ -152,8 +157,41 @@
 	}
 	
 	function messageWithId(msg) {
+		console.log(msg)
 		msg.id = document.cookie;
 		return JSON.stringify(msg);
+	}
+	
+	function mouseDownHandler(e) {
+		mouseDown = true;
+		e.preventDefault();
+		Joystick.updateStickPos(e.clientX, e.clientY);
+		
+		for (var j = 0; j < buttons.length; j++) {
+			if (buttons[j].isInsideArea(e.clientX, e.clientY)) {
+				debugText += "ASd";
+				if (window.navigator.vibrate) {
+					window.navigator.vibrate(200);
+				}
+				socket.emit("button", messageWithId({
+					button: buttons[j].name,
+					status: 1
+				}));
+				buttonTouches[0] = buttons[j].name;
+			}
+		}
+		socket.emit("joystick", messageWithId(Joystick.getInput()));
+	}
+	
+	function mouseMoveHandler(e) {
+		if(!mouseDown) return;
+		Joystick.updateStickPos(e.clientX, e.clientY);
+		socket.emit("joystick", messageWithId(Joystick.getInput()));
+	}
+	
+	function mouseUpHandler(e) {
+		mouseDown = false;
+		socket.emit("joystick", messageWithId(Joystick.getZeroed()));
 	}
 	
 	function touchMoveHandler(e) {

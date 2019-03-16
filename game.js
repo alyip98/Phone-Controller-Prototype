@@ -299,5 +299,4 @@ function Controller() {
 		this.inputs[obj.button] = obj.status;
 	}
 }
-
 window.onload = init;

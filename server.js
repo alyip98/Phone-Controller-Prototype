@@ -9,7 +9,7 @@ var players = {};
  */
 
 app.get('/', function(req, res){
-	res.sendFile(__dirname + '/index.html');
+	res.sendFile(__dirname + '/controller.html');
 });
 
 app.get('/game', function(req, res){
